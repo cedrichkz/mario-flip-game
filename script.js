@@ -40,17 +40,15 @@ async function fetchScores() {
 }
 
 async function insertScore(name, coins) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/upsert_high_score`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation',
     },
-    body: JSON.stringify({ name, coins }),
+    body: JSON.stringify({ p_name: name, p_coins: coins }),
   });
-  return res.ok ? res.json() : null;
 }
 
 // ── Render table ────────────────────────────
