@@ -1,3 +1,6 @@
+const SUPABASE_URL = 'https://rlbrlfjejxbpgaevpzsx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYnJsZmplanhicGdhZXZwenN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODM5OTEsImV4cCI6MjA5NjY1OTk5MX0.P_zgG2ZNd0UyTrKjDv10t9XppToiW0PfEx9DzMW68ek';
+
 const DURATION = 15;
 let score = 0;
 let flipping = false;
@@ -6,35 +9,52 @@ let timeLeft = DURATION;
 let timerInterval = null;
 let pendingScore = 0;
 
-// ── Persist scores ─────────────────────────
-function loadScores() {
-  try { return JSON.parse(localStorage.getItem('marioScores') || '[]'); }
-  catch { return []; }
+// ── Supabase helpers ────────────────────────
+async function fetchScores() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/scores?select=name,coins,created_at&order=coins.desc&limit=20`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  );
+  return res.ok ? res.json() : [];
 }
 
-function saveScores(arr) {
-  localStorage.setItem('marioScores', JSON.stringify(arr));
+async function insertScore(name, coins) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({ name, coins }),
+  });
+  return res.ok ? res.json() : null;
 }
 
 // ── Render table ────────────────────────────
-function renderTable(highlightIndex = -1) {
-  const scores = loadScores();
+async function renderTable(highlightName = null, highlightCoins = null) {
   const tbody = document.getElementById('hsBody');
+  tbody.innerHTML = '<tr><td colspan="4" class="hs-empty">LOADING...</td></tr>';
 
-  if (scores.length === 0) {
+  const scores = await fetchScores();
+
+  if (!scores.length) {
     tbody.innerHTML = '<tr><td colspan="4" class="hs-empty">NO SCORES YET — BE THE FIRST!</td></tr>';
     return;
   }
 
+  const medals = ['🥇', '🥈', '🥉'];
   tbody.innerHTML = scores.map((s, i) => {
-    const medals = ['🥇', '🥈', '🥉'];
     const rankText = i < 3 ? medals[i] : `#${i + 1}`;
-    const isNew = i === highlightIndex;
-    return `<tr class="rank-${i + 1}${isNew ? ' hs-new' : ''}">
+    const d = new Date(s.created_at);
+    const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const isNew = s.name === highlightName && s.coins === highlightCoins;
+    return `<tr class="rank-${i+1}${isNew ? ' hs-new' : ''}">
       <td class="rank">${rankText}</td>
       <td>${s.name}</td>
       <td class="score-col">${s.coins}</td>
-      <td>${s.date}</td>
+      <td>${date}</td>
     </tr>`;
   }).join('');
 
@@ -141,22 +161,21 @@ function endGame() {
   }, 600);
 }
 
-function saveScore() {
+async function saveScore() {
   const raw = document.getElementById('nameInput').value.trim().toUpperCase();
   const name = raw || 'AAA';
-  const scores = loadScores();
-  const now = new Date();
-  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  scores.push({ name, coins: pendingScore, date });
-  scores.sort((a, b) => b.coins - a.coins);
-  if (scores.length > 20) scores.length = 20;
-  const newIndex = scores.findIndex(s => s.name === name && s.coins === pendingScore && s.date === date);
-  saveScores(scores);
+
+  const saveBtn = document.querySelector('#overlay .btn-green');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'SAVING...';
+
+  await insertScore(name, pendingScore);
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'SAVE SCORE';
+
   closeOverlay();
-  renderTable(newIndex);
-  document.getElementById('startBtn').style.display = 'inline-block';
-  document.getElementById('hitBtn').style.display = 'none';
-  document.getElementById('subtext').textContent = 'PRESS START — BEAT THE CLOCK!';
+  renderTable(name, pendingScore);
 }
 
 function closeOverlay() {
