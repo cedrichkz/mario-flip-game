@@ -9,6 +9,27 @@ let timeLeft = DURATION;
 let timerInterval = null;
 let pendingScore = 0;
 
+// ── Locked username ─────────────────────────
+function getLockedName() {
+  return localStorage.getItem('marioPlayerName') || null;
+}
+
+function setLockedName(name) {
+  localStorage.setItem('marioPlayerName', name);
+  document.getElementById('playerDisplay').textContent = name;
+}
+
+function initPlayerDisplay() {
+  const name = getLockedName();
+  document.getElementById('playerDisplay').textContent = name || '—';
+  document.getElementById('playerDisplay').onclick = () => {
+    if (confirm('Reset your player name? Your scores will stay on the board.')) {
+      localStorage.removeItem('marioPlayerName');
+      document.getElementById('playerDisplay').textContent = '—';
+    }
+  };
+}
+
 // ── Supabase helpers ────────────────────────
 async function fetchScores() {
   const res = await fetch(
@@ -155,21 +176,46 @@ function endGame() {
 
   setTimeout(() => {
     document.getElementById('finalScore').textContent = pendingScore;
-    document.getElementById('nameInput').value = '';
-    document.getElementById('overlay').classList.add('show');
-    document.getElementById('nameInput').focus();
+    const lockedName = getLockedName();
+    const nameRow = document.getElementById('nameRow');
+    const nameInput = document.getElementById('nameInput');
+
+    if (lockedName) {
+      // Name already locked — hide input, auto-save
+      nameRow.style.display = 'none';
+      document.getElementById('overlay').classList.add('show');
+      autoSaveScore(lockedName);
+    } else {
+      // First time — show name input
+      nameRow.style.display = 'flex';
+      nameInput.value = '';
+      document.getElementById('overlay').classList.add('show');
+      nameInput.focus();
+    }
   }, 600);
+}
+
+async function autoSaveScore(name) {
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'SAVING...';
+  await insertScore(name, pendingScore);
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'SAVE SCORE';
+  closeOverlay();
+  renderTable(name, pendingScore);
 }
 
 async function saveScore() {
   const raw = document.getElementById('nameInput').value.trim().toUpperCase();
   const name = raw || 'AAA';
 
-  const saveBtn = document.querySelector('#overlay .btn-green');
+  const saveBtn = document.getElementById('saveBtn');
   saveBtn.disabled = true;
   saveBtn.textContent = 'SAVING...';
 
   await insertScore(name, pendingScore);
+  setLockedName(name);
 
   saveBtn.disabled = false;
   saveBtn.textContent = 'SAVE SCORE';
@@ -237,4 +283,5 @@ document.getElementById('nameInput').addEventListener('keydown', (e) => {
 });
 
 // ── Init ────────────────────────────────────
+initPlayerDisplay();
 renderTable();

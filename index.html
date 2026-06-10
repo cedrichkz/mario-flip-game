@@ -29,6 +29,10 @@
       <div class="hud-label">BEST</div>
       <div class="hud-value" id="bestDisplay">—</div>
     </div>
+    <div class="hud-box">
+      <div class="hud-label">PLAYER</div>
+      <div class="hud-value" id="playerDisplay" style="font-size:clamp(0.45rem,2.2vw,0.6rem); cursor:pointer;" title="Click to reset name">—</div>
+    </div>
   </div>
 
   <!-- Coin + Block -->
@@ -107,11 +111,12 @@
     <div class="overlay-box">
       <div class="overlay-title">TIME'S UP!</div>
       <div class="overlay-score">YOU FLIPPED<br><b id="finalScore">0</b><br>COINS!</div>
-      <div class="name-row">
+      <div class="name-row" id="nameRow">
         <div class="name-label">ENTER YOUR NAME</div>
         <input class="name-input" id="nameInput" maxlength="10" placeholder="AAA" autocomplete="off"/>
+        <div class="name-label" style="color:#bbb; font-size:0.32rem;">THIS NAME WILL BE LOCKED TO YOUR DEVICE</div>
       </div>
-      <button class="btn btn-green" onclick="saveScore()">SAVE SCORE</button>
+      <button class="btn btn-green" id="saveBtn" onclick="saveScore()">SAVE SCORE</button>
       <button class="btn btn-red" style="font-size:0.55rem; padding:10px 20px;" onclick="closeOverlay()">SKIP</button>
     </div>
   </div>
