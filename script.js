@@ -158,7 +158,7 @@ function startGame() {
   document.getElementById('hitBtn').style.display = 'inline-block';
   document.getElementById('hitBtn').disabled = false;
   document.getElementById('block').classList.remove('spent');
-  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('resultOverlay').classList.remove('show');
 
   startTimer();
 }
@@ -192,15 +192,15 @@ function endGame() {
 
 async function silentSave(name) {
   document.getElementById('hitBtn').style.display = 'none';
-  const card = document.getElementById('resultCard');
-  const text = document.getElementById('resultText');
-  text.textContent = '...';
-  card.style.display = 'flex';
-
+  document.getElementById('resultScore').textContent = pendingScore;
+  document.getElementById('resultOverlay').classList.add('show');
   await insertScore(name, pendingScore);
   renderTable(name, pendingScore);
+}
 
-  text.innerHTML = `YOUR SCORE<br><span style="font-size:clamp(1rem,6vw,1.4rem);color:#e8a000;text-shadow:2px 2px 0 #c07000;">${pendingScore}</span><br>COINS`;
+function closeResultAndRestart() {
+  document.getElementById('resultOverlay').classList.remove('show');
+  startGame();
 }
 
 async function saveScore() {
