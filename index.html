@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <title>Mario Coin Flip</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: env(safe-area-inset-top, 24px) 16px calc(env(safe-area-inset-bottom, 0px) + 40px);
+      padding-top: max(24px, env(safe-area-inset-top));
+      font-family: 'Press Start 2P', monospace;
+      overflow-x: hidden;
+      min-height: 100dvh;
+    }
+
+    h1 {
+      color: #e8a000;
+      font-size: clamp(0.9rem, 5vw, 1.4rem);
+      margin-bottom: 8px;
+      text-shadow: 3px 3px 0 #c07000;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: clamp(0.35rem, 1.8vw, 0.42rem);
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    /* ── HUD row ──────────────────────────────── */
+    .hud {
+      display: flex;
+      gap: clamp(16px, 6vw, 40px);
+      align-items: center;
+      margin-bottom: 20px;
+      background: #fafafa;
+      border: 3px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 12px clamp(16px, 5vw, 32px);
+      width: 100%;
+      max-width: 420px;
+      justify-content: space-around;
+    }
+
+    .hud-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hud-label {
+      font-size: clamp(0.32rem, 1.5vw, 0.38rem);
+      color: #888;
+      letter-spacing: 1px;
+    }
+
+    .hud-value {
+      font-size: clamp(0.8rem, 4vw, 1rem);
+      color: #333;
+      text-shadow: 2px 2px 0 #bbb;
+      min-width: 3ch;
+      text-align: center;
+    }
+
+    .hud-value.coins { color: #e8a000; text-shadow: 2px 2px 0 #c07000; }
+
+    .hud-value.timer-warn { color: #e84000; text-shadow: 2px 2px 0 #a02000; animation: timerPulse 0.5s infinite alternate; }
+
+    @keyframes timerPulse {
+      from { transform: scale(1); }
+      to   { transform: scale(1.15); }
+    }
+
+    /* ── Coin area ──────────────────────────────── */
+    .coin-area {
+      position: relative;
+      width: clamp(100px, 30vw, 140px);
+      height: clamp(170px, 50vw, 220px);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .score-pop {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(0.55rem, 2.5vw, 0.7rem);
+      color: #e8a000;
+      text-shadow: 2px 2px 0 #c07000;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .score-pop.animate { animation: popUp 0.7s ease-out forwards; }
+
+    @keyframes popUp {
+      0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-60px); }
+    }
+
+    .coin {
+      width: clamp(64px, 20vw, 96px);
+      height: clamp(64px, 20vw, 96px);
+      position: absolute;
+      bottom: clamp(68px, 21vw, 100px);
+      image-rendering: pixelated;
+    }
+
+    .coin.flip { animation: coinFlip 0.6s ease-in-out forwards; }
+
+    @keyframes coinFlip {
+      0%   { transform: translateY(0)      scaleX(1);    }
+      15%  { transform: translateY(-60px)  scaleX(0.15); }
+      30%  { transform: translateY(-100px) scaleX(1);    }
+      45%  { transform: translateY(-120px) scaleX(0.15); }
+      60%  { transform: translateY(-100px) scaleX(1);    }
+      75%  { transform: translateY(-60px)  scaleX(0.15); }
+      90%  { transform: translateY(-10px)  scaleX(1);    }
+      100% { transform: translateY(0)      scaleX(1);    }
+    }
+
+    .coin svg { width: 100%; height: 100%; filter: drop-shadow(3px 4px 0px rgba(0,0,0,0.25)); }
+
+    .block {
+      width: clamp(64px, 20vw, 96px);
+      height: clamp(64px, 20vw, 96px);
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+
+    .block svg { width: 100%; height: 100%; image-rendering: pixelated; }
+
+    .block.bump { animation: blockBump 0.18s ease-in-out; }
+
+    @keyframes blockBump {
+      0%   { transform: translateY(0); }
+      50%  { transform: translateY(-10px); }
+      100% { transform: translateY(0); }
+    }
+
+    .block.spent { cursor: default; filter: grayscale(0.6) brightness(0.85); }
+
+    /* ── Buttons ──────────────────────────────── */
+    .btn {
+      background: #e8a000;
+      color: #fff;
+      border: none;
+      padding: clamp(14px, 3.5vw, 18px) clamp(24px, 7vw, 36px);
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.6rem, 2.8vw, 0.75rem);
+      cursor: pointer;
+      letter-spacing: 1px;
+      box-shadow: 0 6px 0 #c07000, 0 8px 0 rgba(0,0,0,0.15);
+      border-radius: 4px;
+      transition: transform 0.08s, box-shadow 0.08s;
+      text-transform: uppercase;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .btn:hover  { background: #f5b800; }
+    .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #c07000, 0 3px 0 rgba(0,0,0,0.15); }
+    .btn:disabled { background: #bbb; box-shadow: 0 6px 0 #888; cursor: default; }
+
+    .btn-red {
+      background: #d63030;
+      box-shadow: 0 6px 0 #a01818, 0 8px 0 rgba(0,0,0,0.15);
+    }
+    .btn-red:hover  { background: #e84040; }
+    .btn-red:active { box-shadow: 0 2px 0 #a01818, 0 3px 0 rgba(0,0,0,0.15); }
+
+    .btn-green {
+      background: #2c9e2c;
+      box-shadow: 0 6px 0 #1a6e1a, 0 8px 0 rgba(0,0,0,0.15);
+    }
+    .btn-green:hover  { background: #38b838; }
+
+    /* ── Game-over overlay ──────────────────────────────── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .overlay.show { display: flex; }
+
+    .overlay-box {
+      background: #fff;
+      border: 4px solid #e8a000;
+      box-shadow: 6px 6px 0 #c07000;
+      padding: clamp(20px, 6vw, 36px) clamp(20px, 7vw, 40px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      max-width: 380px;
+      width: 100%;
+    }
+
+    .overlay-title {
+      color: #e8a000;
+      font-size: clamp(0.7rem, 4vw, 1rem);
+      text-shadow: 3px 3px 0 #c07000;
+    }
+
+    .overlay-score {
+      color: #333;
+      font-size: clamp(0.5rem, 2.5vw, 0.7rem);
+      text-align: center;
+      line-height: 2;
+    }
+
+    .overlay-score b { color: #e8a000; font-size: clamp(0.9rem, 5vw, 1.2rem); text-shadow: 2px 2px 0 #c07000; }
+
+    .name-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .name-label { font-size: clamp(0.32rem, 1.6vw, 0.42rem); color: #888; letter-spacing: 1px; }
+
+    .name-input {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.55rem, 3vw, 0.7rem);
+      border: 3px solid #e8a000;
+      border-radius: 4px;
+      padding: 12px 14px;
+      width: 100%;
+      text-align: center;
+      color: #333;
+      outline: none;
+      text-transform: uppercase;
+      /* prevent iOS zoom on focus */
+      font-size: max(16px, clamp(0.55rem, 3vw, 0.7rem));
+    }
+
+    .name-input:focus { border-color: #f5b800; }
+
+    /* ── High-score table ──────────────────────────────── */
+    .hs-section {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 32px;
+      padding: 0 4px;
+    }
+
+    .hs-title {
+      color: #e8a000;
+      font-size: clamp(0.55rem, 2.5vw, 0.75rem);
+      text-shadow: 2px 2px 0 #c07000;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    .hs-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .hs-table thead tr {
+      background: #e8a000;
+    }
+
+    .hs-table thead th {
+      color: #fff;
+      font-size: clamp(0.28rem, 1.4vw, 0.38rem);
+      padding: clamp(7px, 2vw, 10px) clamp(8px, 2.5vw, 12px);
+      text-align: left;
+      letter-spacing: 1px;
+    }
+
+    .hs-table tbody tr {
+      border-bottom: 2px solid #f0f0f0;
+      transition: background 0.15s;
+    }
+
+    .hs-table tbody tr:nth-child(odd)  { background: #fffdf0; }
+    .hs-table tbody tr:nth-child(even) { background: #fff; }
+    .hs-table tbody tr.hs-new          { background: #fff8d6 !important; }
+
+    .hs-table tbody tr:hover { background: #fff3cc !important; }
+
+    .hs-table tbody td {
+      font-size: clamp(0.3rem, 1.5vw, 0.42rem);
+      padding: clamp(7px, 2vw, 10px) clamp(8px, 2.5vw, 12px);
+      color: #444;
+    }
+
+    .hs-table tbody td.rank { color: #e8a000; text-shadow: 1px 1px 0 #c07000; font-size: clamp(0.38rem, 2vw, 0.55rem); }
+    .hs-table tbody td.score-col { color: #333; font-size: clamp(0.38rem, 2vw, 0.55rem); }
+
+    .rank-1 .rank { color: #f5b800; font-size: clamp(0.42rem, 2.2vw, 0.65rem); }
+    .rank-2 .rank { color: #aaa; }
+    .rank-3 .rank { color: #cd7f32; }
+
+    .hs-empty {
+      text-align: center;
+      font-size: clamp(0.3rem, 1.5vw, 0.42rem);
+      color: #bbb;
+      padding: 24px;
+    }
+
+    /* Sparkles */
+    .sparkle {
+      position: fixed;
+      pointer-events: none;
+      font-size: clamp(0.9rem, 4vw, 1.2rem);
+      animation: sparkleFly 0.7s ease-out forwards;
+    }
+
+    @keyframes sparkleFly {
+      0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+    }
+
+    /* Game state visibility */
+    #startBtn   { display: inline-block; }
+    #hitBtn     { display: none; }
+    #gameOver   { display: none; }
+
+    /* ── Small phones (≤380px) ──────────────────── */
+    @media (max-width: 380px) {
+      body { padding-top: max(16px, env(safe-area-inset-top)); }
+      h1 { font-size: 0.85rem; }
+      .hud { gap: 12px; padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>COIN FLIP!</h1>
+  <p class="subtitle" id="subtext">PRESS START — BEAT THE CLOCK!</p>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-box">
+      <div class="hud-label">TIME</div>
+      <div class="hud-value" id="timerDisplay">15</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">COINS</div>
+      <div class="hud-value coins" id="scoreNum">0</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">BEST</div>
+      <div class="hud-value" id="bestDisplay">—</div>
+    </div>
+  </div>
+
+  <!-- Coin + Block -->
+  <div class="coin-area">
+    <div class="score-pop" id="scorePop">+1</div>
+
+    <div class="coin" id="coin">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="0" width="8" height="1" fill="#f8d000"/>
+        <rect x="2" y="1" width="12" height="1" fill="#f8d000"/>
+        <rect x="1" y="2" width="2" height="1" fill="#f8d000"/>
+        <rect x="3" y="2" width="2" height="1" fill="#fae84a"/>
+        <rect x="5" y="2" width="6" height="1" fill="#f8d000"/>
+        <rect x="11" y="2" width="1" height="1" fill="#c9a000"/>
+        <rect x="12" y="2" width="2" height="1" fill="#f8d000"/>
+        <rect x="1" y="3" width="2" height="1" fill="#f8d000"/>
+        <rect x="3" y="3" width="2" height="1" fill="#fae84a"/>
+        <rect x="5" y="3" width="6" height="1" fill="#fae84a"/>
+        <rect x="11" y="3" width="1" height="1" fill="#c9a000"/>
+        <rect x="12" y="3" width="2" height="1" fill="#f8d000"/>
+        <rect x="1" y="4" width="2" height="10" fill="#f8d000"/>
+        <rect x="3" y="4" width="2" height="2" fill="#fae84a"/>
+        <rect x="5" y="4" width="6" height="1" fill="#fae84a"/>
+        <rect x="11" y="4" width="1" height="2" fill="#c9a000"/>
+        <rect x="12" y="4" width="2" height="10" fill="#f8d000"/>
+        <rect x="5" y="5" width="6" height="1" fill="#f8d000"/>
+        <rect x="3" y="6" width="2" height="1" fill="#fae84a"/>
+        <rect x="5" y="6" width="6" height="1" fill="#fae84a"/>
+        <rect x="11" y="6" width="1" height="1" fill="#c9a000"/>
+        <rect x="3" y="7" width="2" height="1" fill="#fae84a"/>
+        <rect x="5" y="7" width="6" height="4" fill="#fae84a"/>
+        <rect x="11" y="7" width="1" height="4" fill="#c9a000"/>
+        <rect x="3" y="8" width="2" height="1" fill="#fae84a"/>
+        <rect x="3" y="9" width="2" height="1" fill="#fae84a"/>
+        <rect x="3" y="10" width="2" height="1" fill="#fae84a"/>
+        <rect x="3" y="11" width="2" height="1" fill="#fae84a"/>
+        <rect x="5" y="11" width="6" height="1" fill="#f8d000"/>
+        <rect x="11" y="11" width="1" height="1" fill="#c9a000"/>
+        <rect x="3" y="12" width="2" height="1" fill="#c9a000"/>
+        <rect x="5" y="12" width="6" height="1" fill="#c9a000"/>
+        <rect x="11" y="12" width="1" height="1" fill="#c9a000"/>
+        <rect x="1" y="13" width="2" height="1" fill="#f8d000"/>
+        <rect x="3" y="13" width="10" height="1" fill="#f8d000"/>
+        <rect x="13" y="13" width="2" height="1" fill="#f8d000"/>
+        <rect x="2" y="14" width="12" height="1" fill="#f8d000"/>
+        <rect x="4" y="15" width="8" height="1" fill="#f8d000"/>
+      </svg>
+    </div>
+
+    <div class="block" id="block" onclick="handleFlip()">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="16" height="16" fill="#c07000"/>
+        <rect x="1" y="1" width="14" height="14" fill="#e8a000"/>
+        <rect x="1" y="1" width="14" height="2" fill="#f5c000"/>
+        <rect x="1" y="1" width="2"  height="12" fill="#f5c000"/>
+        <rect x="1" y="13" width="14" height="2" fill="#a06000"/>
+        <rect x="13" y="1" width="2"  height="12" fill="#a06000"/>
+        <rect x="6"  y="3" width="4" height="1" fill="#fff"/>
+        <rect x="5"  y="4" width="1" height="1" fill="#fff"/>
+        <rect x="9"  y="4" width="1" height="1" fill="#fff"/>
+        <rect x="9"  y="5" width="1" height="1" fill="#fff"/>
+        <rect x="8"  y="6" width="1" height="1" fill="#fff"/>
+        <rect x="7"  y="7" width="1" height="1" fill="#fff"/>
+        <rect x="7"  y="9" width="1" height="1" fill="#fff"/>
+        <rect x="7"  y="11" width="1" height="1" fill="#fff"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <button class="btn btn-green" id="startBtn" onclick="startGame()">START!</button>
+  <button class="btn" id="hitBtn" onclick="handleFlip()" disabled>HIT BLOCK!</button>
+
+  <!-- Game Over overlay -->
+  <div class="overlay" id="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">TIME'S UP!</div>
+      <div class="overlay-score">YOU FLIPPED<br><b id="finalScore">0</b><br>COINS!</div>
+      <div class="name-row">
+        <div class="name-label">ENTER YOUR NAME</div>
+        <input class="name-input" id="nameInput" maxlength="10" placeholder="AAA" autocomplete="off"/>
+      </div>
+      <button class="btn btn-green" onclick="saveScore()">SAVE SCORE</button>
+      <button class="btn btn-red" style="font-size:0.55rem; padding:10px 20px;" onclick="closeOverlay()">SKIP</button>
+    </div>
+  </div>
+
+  <!-- High score table -->
+  <div class="hs-section">
+    <div class="hs-title">— HIGH SCORES —</div>
+    <table class="hs-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>NAME</th>
+          <th>COINS</th>
+          <th>DATE</th>
+        </tr>
+      </thead>
+      <tbody id="hsBody">
+        <tr><td colspan="4" class="hs-empty">NO SCORES YET — BE THE FIRST!</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const DURATION = 15;
+    let score = 0;
+    let flipping = false;
+    let gameActive = false;
+    let timeLeft = DURATION;
+    let timerInterval = null;
+    let pendingScore = 0;
+
+    // ── Persist scores ─────────────────────────
+    function loadScores() {
+      try { return JSON.parse(localStorage.getItem('marioScores') || '[]'); }
+      catch { return []; }
+    }
+
+    function saveScores(arr) {
+      localStorage.setItem('marioScores', JSON.stringify(arr));
+    }
+
+    // ── Render table ────────────────────────────
+    function renderTable(highlightIndex = -1) {
+      const scores = loadScores();
+      const tbody = document.getElementById('hsBody');
+
+      if (scores.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="hs-empty">NO SCORES YET — BE THE FIRST!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = scores.map((s, i) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        const rankText = i < 3 ? medals[i] : `#${i + 1}`;
+        const isNew = i === highlightIndex;
+        return `<tr class="rank-${i+1}${isNew ? ' hs-new' : ''}">
+          <td class="rank">${rankText}</td>
+          <td>${s.name}</td>
+          <td class="score-col">${s.coins}</td>
+          <td>${s.date}</td>
+        </tr>`;
+      }).join('');
+
+      // Update best display
+      document.getElementById('bestDisplay').textContent = scores[0].coins;
+    }
+
+    // ── Sound ───────────────────────────────────
+    function playCoinSound() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'square';
+      const now = ctx.currentTime;
+      osc.frequency.setValueAtTime(987.77, now);
+      osc.frequency.setValueAtTime(1318.51, now + 0.08);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    function playTimeUpSound() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+      [659, 523, 392, 330].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, now + i * 0.14);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.13);
+        osc.start(now + i * 0.14);
+        osc.stop(now + i * 0.14 + 0.13);
+      });
+    }
+
+    // ── Sparkles ────────────────────────────────
+    function spawnSparkles(x, y) {
+      const emojis = ['✨', '⭐', '💛', '🌟'];
+      for (let i = 0; i < 6; i++) {
+        const el = document.createElement('div');
+        el.className = 'sparkle';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        const angle = (Math.PI * 2 / 6) * i;
+        const dist = 60 + Math.random() * 40;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+    }
+
+    // ── Timer ───────────────────────────────────
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        const display = document.getElementById('timerDisplay');
+        display.textContent = timeLeft;
+        display.className = 'hud-value' + (timeLeft <= 10 ? ' timer-warn' : '');
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+    }
+
+    // ── Game flow ───────────────────────────────
+    function startGame() {
+      score = 0;
+      timeLeft = DURATION;
+      gameActive = true;
+      flipping = false;
+
+      document.getElementById('scoreNum').textContent = '0';
+      document.getElementById('timerDisplay').textContent = DURATION;
+      document.getElementById('timerDisplay').className = 'hud-value';
+      document.getElementById('subtext').textContent = 'GO GO GO! HIT THE BLOCK!';
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('hitBtn').style.display = 'inline-block';
+      document.getElementById('hitBtn').disabled = false;
+      document.getElementById('block').classList.remove('spent');
+
+      startTimer();
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      gameActive = false;
+      pendingScore = score;
+
+      document.getElementById('hitBtn').disabled = true;
+      document.getElementById('subtext').textContent = 'TIME\'S UP!';
+
+      playTimeUpSound();
+
+      // Show overlay after short delay
+      setTimeout(() => {
+        document.getElementById('finalScore').textContent = pendingScore;
+        document.getElementById('nameInput').value = '';
+        document.getElementById('overlay').classList.add('show');
+        document.getElementById('nameInput').focus();
+      }, 600);
+    }
+
+    function saveScore() {
+      const raw = document.getElementById('nameInput').value.trim().toUpperCase();
+      const name = raw || 'AAA';
+      const scores = loadScores();
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      scores.push({ name, coins: pendingScore, date });
+      scores.sort((a, b) => b.coins - a.coins);
+      if (scores.length > 20) scores.length = 20;
+      const newIndex = scores.findIndex(s => s.name === name && s.coins === pendingScore && s.date === date);
+      saveScores(scores);
+      closeOverlay();
+      renderTable(newIndex);
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('hitBtn').style.display = 'none';
+      document.getElementById('subtext').textContent = 'PRESS START — BEAT THE CLOCK!';
+    }
+
+    function closeOverlay() {
+      document.getElementById('overlay').classList.remove('show');
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('hitBtn').style.display = 'none';
+      document.getElementById('subtext').textContent = 'PRESS START — BEAT THE CLOCK!';
+    }
+
+    // ── Flip ────────────────────────────────────
+    function handleFlip() {
+      if (!gameActive || flipping) return;
+      flipping = true;
+
+      playCoinSound();
+
+      const block = document.getElementById('block');
+      block.classList.remove('bump');
+      void block.offsetWidth;
+      block.classList.add('bump');
+
+      const coin = document.getElementById('coin');
+      coin.classList.remove('flip');
+      void coin.offsetWidth;
+      coin.classList.add('flip');
+
+      const pop = document.getElementById('scorePop');
+      pop.classList.remove('animate');
+      void pop.offsetWidth;
+      pop.classList.add('animate');
+
+      const rect = block.getBoundingClientRect();
+      spawnSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+      score++;
+      document.getElementById('scoreNum').textContent = score;
+
+      coin.addEventListener('animationend', () => {
+        coin.classList.remove('flip');
+        flipping = false;
+      }, { once: true });
+    }
+
+    // ── Keyboard ────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        if (!gameActive) {
+          if (!document.getElementById('overlay').classList.contains('show')) startGame();
+        } else {
+          handleFlip();
+        }
+      }
+      if (e.code === 'Escape') closeOverlay();
+    });
+
+    // Enter key in name input saves score
+    document.getElementById('nameInput').addEventListener('keydown', (e) => {
+      if (e.code === 'Enter') saveScore();
+    });
+
+    // ── Init ────────────────────────────────────
+    renderTable();
+  </script>
+
+</body>
+</html>
