@@ -174,35 +174,30 @@ function endGame() {
 
   playTimeUpSound();
 
-  setTimeout(() => {
-    document.getElementById('finalScore').textContent = pendingScore;
-    const lockedName = getLockedName();
-    const nameRow = document.getElementById('nameRow');
-    const nameInput = document.getElementById('nameInput');
+  const lockedName = getLockedName();
 
-    if (lockedName) {
-      // Name already locked — hide input, auto-save
-      nameRow.style.display = 'none';
+  if (lockedName) {
+    // Returning player — no overlay, silent background save
+    silentSave(lockedName);
+  } else {
+    // First time — show overlay with name input after short delay
+    setTimeout(() => {
+      document.getElementById('finalScore').textContent = pendingScore;
+      document.getElementById('nameRow').style.display = 'flex';
+      document.getElementById('nameInput').value = '';
       document.getElementById('overlay').classList.add('show');
-      autoSaveScore(lockedName);
-    } else {
-      // First time — show name input
-      nameRow.style.display = 'flex';
-      nameInput.value = '';
-      document.getElementById('overlay').classList.add('show');
-      nameInput.focus();
-    }
-  }, 600);
+      document.getElementById('nameInput').focus();
+    }, 600);
+  }
 }
 
-async function autoSaveScore(name) {
-  const saveBtn = document.getElementById('saveBtn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'SAVING...';
+async function silentSave(name) {
+  const subtext = document.getElementById('subtext');
+  subtext.textContent = `SAVING ${name}'S SCORE...`;
   await insertScore(name, pendingScore);
-  saveBtn.disabled = false;
-  saveBtn.textContent = 'SAVE SCORE';
-  closeOverlay();
+  subtext.textContent = `✓ SAVED AS ${name}! PLAY AGAIN?`;
+  document.getElementById('startBtn').style.display = 'inline-block';
+  document.getElementById('hitBtn').style.display = 'none';
   renderTable(name, pendingScore);
 }
 
