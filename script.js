@@ -146,7 +146,7 @@ function saveScore() {
   const name = raw || 'AAA';
   const scores = loadScores();
   const now = new Date();
-  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   scores.push({ name, coins: pendingScore, date });
   scores.sort((a, b) => b.coins - a.coins);
   if (scores.length > 20) scores.length = 20;
