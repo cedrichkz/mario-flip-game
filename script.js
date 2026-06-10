@@ -262,6 +262,9 @@ function handleFlip() {
 
 // ── Keyboard ────────────────────────────────
 document.addEventListener('keydown', (e) => {
+  // Never intercept keys while the name input is focused
+  if (document.activeElement === document.getElementById('nameInput')) return;
+
   if (e.code === 'Space' || e.code === 'Enter') {
     e.preventDefault();
     if (!gameActive) {
@@ -274,7 +277,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('nameInput').addEventListener('keydown', (e) => {
-  if (e.code === 'Enter') saveScore();
+  if (e.code === 'Enter') { e.preventDefault(); saveScore(); }
 });
 
 // ── Init ────────────────────────────────────
